@@ -1,6 +1,7 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { TaskStatus, User } from '@prisma/client';
+import { TaskStatus, ActionType, User } from '@prisma/client';
+import { ActivityService } from 'src/activity/activity.service';
 
 interface UserPayload {
   userId: number;
@@ -9,7 +10,10 @@ interface UserPayload {
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private activityService: ActivityService,
+  ) {}
 
   private async validateTaskOwnership(taskId: number, user: UserPayload) {
     const task = await this.prisma.task.findUnique({
@@ -45,13 +49,23 @@ export class TasksService {
       throw new ForbiddenException('Access denied to this project');
     }
 
-    return this.prisma.task.create({
+    const task = await this.prisma.task.create({
       data: {
         title,
         description: description || null,
         projectId,
       },
     });
+
+    // Log activity with action code and description
+    await this.activityService.logAction(
+      user.userId,
+      projectId,
+      ActionType.CREATE_TASK,
+      `Added task "${title}"`,
+    );
+
+    return task;
   }
 
   async getTasks(user: UserPayload, projectId: number) {
@@ -73,13 +87,26 @@ export class TasksService {
     });
   }
 
-  async updateTask(user: UserPayload, taskId: number, data: Partial<{ title: string; description: string; status: TaskStatus }>) {
-    await this.validateTaskOwnership(taskId, user);
+  async updateTask(
+    user: UserPayload,
+    taskId: number,
+    data: Partial<{ title: string; description: string; status: TaskStatus }>,
+  ) {
+    const task = await this.validateTaskOwnership(taskId, user);
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id: taskId },
       data,
     });
+
+    await this.activityService.logAction(
+      user.userId,
+      task.projectId,
+      ActionType.UPDATE_TASK,
+      `Updated task "${task.title}"`,
+    );
+
+    return updated;
   }
 
   async changeStatus(user: UserPayload, taskId: number, status: TaskStatus) {
@@ -103,10 +130,19 @@ export class TasksService {
       throw new ForbiddenException('You cannot modify this task');
     }
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id: taskId },
       data: { status },
     });
+
+    await this.activityService.logAction(
+      user.userId,
+      task.projectId,
+      ActionType.CHANGE_STATUS,
+      `Changed status of "${task.title}" to ${status}`,
+    );
+
+    return updated;
   }
 
   async assignUser(user: UserPayload, taskId: number, userId: number) {
@@ -128,23 +164,40 @@ export class TasksService {
       throw new ForbiddenException('You cannot assign users to this task');
     }
 
-    // Optional: Ensure assigned user is part of project team
     const userIsInProject = task.project.users.some((u) => u.id === userId);
     if (!userIsInProject) {
       throw new ForbiddenException('User is not part of the project');
     }
 
-    return this.prisma.task.update({
+    const updated = await this.prisma.task.update({
       where: { id: taskId },
       data: { assignedToId: userId },
     });
+
+    await this.activityService.logAction(
+      user.userId,
+      task.projectId,
+      ActionType.ASSIGN_USER,
+      `Assigned user ID ${userId} to task "${task.title}"`,
+    );
+
+    return updated;
   }
 
   async deleteTask(user: UserPayload, taskId: number) {
-    await this.validateTaskOwnership(taskId, user);
+    const task = await this.validateTaskOwnership(taskId, user);
 
-    return this.prisma.task.delete({
+    await this.prisma.task.delete({
       where: { id: taskId },
     });
+
+    await this.activityService.logAction(
+      user.userId,
+      task.projectId,
+      ActionType.DELETE_TASK,
+      `Deleted task "${task.title}"`,
+    );
+
+    return { message: 'Task deleted' };
   }
 }

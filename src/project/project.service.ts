@@ -1,6 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from '@prisma/client'; // ✅ import Prisma enum
+import { Role } from '@prisma/client'; 
 
 @Injectable()
 export class ProjectService {
