@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Role } from '@prisma/client'; // ✅ import Prisma enum
 
 @Injectable()
 export class ProjectService {
@@ -8,41 +9,42 @@ export class ProjectService {
   async createProject(userId: number, name: string, description: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-        throw new ForbiddenException('User not found');
+      throw new ForbiddenException('User not found');
     }
-    if (user.role !== 'admin' && user.role !== 'manager') {
-      throw new ForbiddenException('Only admins or managers can create projects');
+
+    if (user.role !== Role.ADMIN && user.role !== Role.MANAGER) {
+      throw new ForbiddenException('Access denied');
     }
 
     return this.prisma.project.create({
       data: {
         name,
         description,
-        managerId: user.role === 'manager' ? user.id : null,
+        ownerId: user.id,
+        managerId: user.role === Role.MANAGER ? user.id : null,
       },
     });
   }
 
   async getUserProjects(user: any) {
-  if (user.role === 'admin') {
+    if (user.role === Role.ADMIN) {
+      return this.prisma.project.findMany({
+        include: { manager: true, users: true },
+      });
+    }
+
+    if (user.role === Role.MANAGER) {
+      return this.prisma.project.findMany({
+        where: { managerId: user.id },
+        include: { users: true },
+      });
+    }
+
     return this.prisma.project.findMany({
-      include: { manager: true, users: true },
+      where: { users: { some: { id: user.id } } },
+      include: { manager: true },
     });
   }
-
-  if (user.role === 'manager') {
-    return this.prisma.project.findMany({
-      where: { managerId: user.id }, // 👈 Fixed
-      include: { users: true },
-    });
-  }
-
-  return this.prisma.project.findMany({
-    where: { users: { some: { id: user.id } } }, // 👈 Fixed
-    include: { manager: true },
-  });
-}
-
 
   async getProjectById(id: number) {
     return this.prisma.project.findUnique({
@@ -52,7 +54,10 @@ export class ProjectService {
   }
 
   async deleteProject(id: number, user: any) {
-    if (user.role !== 'admin') throw new ForbiddenException('Only admin can delete projects');
+    if (user.role !== Role.ADMIN) {
+      throw new ForbiddenException('Only admin can delete projects');
+    }
+
     return this.prisma.project.delete({ where: { id } });
   }
 }

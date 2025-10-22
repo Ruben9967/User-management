@@ -1,6 +1,6 @@
 import { Controller, Get, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { Roles } from 'src/auth/roles.decorator';
+import { Role } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -14,7 +14,7 @@ export class UserController {
         return this.prisma.user.findUnique({where: {id: req.user.userId} });
     }
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('admin')
+    @Role('admin')
     @Get('all')
     getAllUsers(){
         return this.prisma.user.findMany();
