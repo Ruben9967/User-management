@@ -38,12 +38,12 @@ model User {
   name          String
   role          Role           @default(USER)
 
-  // Relations
-  projects      Project[]      @relation("UserProjects")     // many-to-many
-  managed       Project[]      @relation("ManagedProjects")  // one-to-many
-  owned         Project[]      @relation("OwnedProjects")    // one-to-many
-  assignedTasks Task[]                                          // one-to-many: tasks assigned to this user
-  logs          ActivityLog[]                                 // one-to-many: user actions
+ 
+  projects      Project[]      @relation("UserProjects")     
+  managed       Project[]      @relation("ManagedProjects")  
+  owned         Project[]      @relation("OwnedProjects")    
+  assignedTasks Task[]                                         
+  logs          ActivityLog[]                                 
 
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -61,8 +61,8 @@ model Project {
   ownerId     Int
   owner       User           @relation("OwnedProjects", fields: [ownerId], references: [id])
 
-  tasks       Task[]                                         // one-to-many: project has many tasks
-  logs        ActivityLog[]                                  // one-to-many: project logs
+  tasks       Task[]                                         
+  logs        ActivityLog[]                                  
 
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -86,7 +86,7 @@ model Task {
 model ActivityLog {
   id          Int         @id @default(autoincrement())
   action      ActionType
-  description String?     // Optional freeform description for dynamic details
+  description String?     
   timestamp   DateTime    @default(now())
 
   userId      Int
