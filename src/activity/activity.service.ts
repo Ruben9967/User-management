@@ -6,7 +6,6 @@ import { ActionType } from '@prisma/client';
 export class ActivityService {
   constructor(private prisma: PrismaService) {}
 
-  // Updated logAction to accept optional description and nullable projectId
   async logAction(
     userId: number,
     projectId: number | null,
@@ -23,7 +22,6 @@ export class ActivityService {
     });
   }
 
-  // Get all logs for a given project, including user info
   async getLogsByProject(projectId: number) {
     return this.prisma.activityLog.findMany({
       where: { projectId },
@@ -36,7 +34,6 @@ export class ActivityService {
     });
   }
 
-  // Get all logs for a given user, including project info
   async getLogsByUser(userId: number) {
     return this.prisma.activityLog.findMany({
       where: { userId },
@@ -49,7 +46,6 @@ export class ActivityService {
     });
   }
 
-  // Get all logs with full user and project details
   async getAllLogs() {
     return this.prisma.activityLog.findMany({
       include: { user: true, project: true },
