@@ -57,7 +57,6 @@ export class TasksService {
       },
     });
 
-    // Log activity with action code and description
     await this.activityService.logAction(
       user.userId,
       projectId,
