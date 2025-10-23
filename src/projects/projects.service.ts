@@ -21,7 +21,6 @@ export class ProjectsService {
         include: { owner: { select: { name: true, email: true } } },
       });
     }
-    // Normal user – show only their projects
     return this.prisma.project.findMany({
       where: { ownerId: user.userId },
     });
